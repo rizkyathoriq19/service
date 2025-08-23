@@ -1,7 +1,40 @@
-node_modules
+# Node modules
+node_modules/
 
-.env
+# Build output
 dist/
-logs
+build/de_modules
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 *.log
-/src/generated/prisma
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Prisma
+prisma/dev.db
+prisma/test.db
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage (testing)
+coverage/
+
+# IDE
+.vscode/
+.idea/
+*.swp
