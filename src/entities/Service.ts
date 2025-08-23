@@ -1,6 +1,7 @@
 export interface ServiceResponse<T> {
     status: boolean;
     data?: T;
+    message?: string;
     err?: ServiceError;
     meta?: {
         page: number;

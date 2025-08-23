@@ -7,6 +7,18 @@ import { exclude, UserLoginDTO, UserRegisterDTO } from '$entities/User';
 
 export async function register(params: UserRegisterDTO): Promise<ServiceResponse<any>> {
     try {
+        const existingUser = await prisma.dealers.findUnique({
+            where: { username: params.username }
+        });
+
+        if (existingUser) {
+            return {
+                status: false,
+                data: {},
+                err: { code: 400, message: 'Username already exists' },
+            };
+        }
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(params.password, salt);
 
@@ -21,9 +33,9 @@ export async function register(params: UserRegisterDTO): Promise<ServiceResponse
 
         return {
             status: true,
+            message: 'User created successfully',
             data: {
                 data: exclude(user, 'password'),
-                message: 'User created successfully',
             }
         };
     } catch (err) {
@@ -60,9 +72,9 @@ export async function login(params: UserLoginDTO): Promise<ServiceResponse<any>>
 
         return {
             status: true,
+            message:'Login successful',
             data: {
                 token,
-                message: 'Login successful',
             },
         };
     } catch (err) {

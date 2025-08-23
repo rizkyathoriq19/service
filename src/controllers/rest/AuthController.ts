@@ -27,5 +27,5 @@ export const login = async (req: Request, res: Response) => {
         return response_unauthorized(res, result.err?.message || 'Invalid username or password');
     }
 
-    return response_success(res, result.data, result.data.message);
+    return response_success(res, result.data, result.message)
 };
