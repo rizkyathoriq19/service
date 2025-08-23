@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '$utils/prisma.utils';
 import Logger from '$pkg/logger';
-import { ServiceResponse, INTERNAL_SERVER_ERROR_SERVICE_RESPONSE } from '$entities/Service';
+import { ServiceResponse, INTERNAL_SERVER_ERROR_SERVICE_RESPONSE, INVALID_ID_SERVICE_RESPONSE } from '$entities/Service';
 import { exclude, UserLoginDTO, UserRegisterDTO } from '$entities/User';
 
 export async function register(params: UserRegisterDTO): Promise<ServiceResponse<any>> {
@@ -15,7 +15,7 @@ export async function register(params: UserRegisterDTO): Promise<ServiceResponse
             return {
                 status: false,
                 data: {},
-                err: { code: 400, message: 'Username already exists' },
+                err: { code: 400, message: 'Username sudah ada' },
             };
         }
 
@@ -33,10 +33,8 @@ export async function register(params: UserRegisterDTO): Promise<ServiceResponse
 
         return {
             status: true,
-            message: 'User created successfully',
-            data: {
-                data: exclude(user, 'password'),
-            }
+            message: 'User berhasil ditambahkan',
+            data: exclude(user, 'password'),
         };
     } catch (err) {
         Logger.error(`AuthService.register: ${err}`);
@@ -45,7 +43,7 @@ export async function register(params: UserRegisterDTO): Promise<ServiceResponse
             data: {},
             err: {
                 code: 400,
-                message: 'Failed to create user',
+                message: 'Gagal membuat user',
             },
         };
     }
@@ -61,7 +59,7 @@ export async function login(params: UserLoginDTO): Promise<ServiceResponse<any>>
                 data: {},
                 err: {
                     code: 401,
-                    message: 'Invalid email or password',
+                    message: 'username atau password tidak valid',
                 },
             };
         }
@@ -72,13 +70,34 @@ export async function login(params: UserLoginDTO): Promise<ServiceResponse<any>>
 
         return {
             status: true,
-            message:'Login successful',
+            message:'Login berhasil',
             data: {
                 token,
             },
         };
     } catch (err) {
         Logger.error(`AuthService.login: ${err}`);
+        return INTERNAL_SERVER_ERROR_SERVICE_RESPONSE;
+    }
+}
+
+export async function getProfile(dealerId: number): Promise<ServiceResponse<any>> {
+    try {
+        const dealer = await prisma.dealers.findUnique({ 
+            where: { id: dealerId },
+        });
+
+        if (!dealer) {
+            return INVALID_ID_SERVICE_RESPONSE;
+        }
+
+        return {
+            status: true,
+            message: 'Data dealer berhasil diambil',
+            data: exclude(dealer, 'password'),
+        }
+    } catch (err) {
+        Logger.error(`AuthService.getProfile: ${err}`);
         return INTERNAL_SERVER_ERROR_SERVICE_RESPONSE;
     }
 }
