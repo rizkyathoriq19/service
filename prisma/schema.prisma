@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Dealers {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(255)
+  username  String   @unique @db.VarChar(255)
+  password  String   @db.VarChar(255)
+  address   String   @db.VarChar(255)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  serviceSchedules ServiceSchedules[]
+  
+  @@map("dealers")
+}
+
+model ServiceSchedules {
+  id            Int      @id @default(autoincrement())
+  schedule_date DateTime @db.Date
+  quota         Int      
+  dealer_id     Int      
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  
+  dealer          Dealers           @relation(fields: [dealer_id], references: [id])
+  serviceBookings ServiceBookings[]
+  
+  @@map("service_schedules")
+}
+
+model ServiceStatuses {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(100)
+  
+  serviceBookings ServiceBookings[]
+  
+  @@map("service_statuses")
+}
+
+model ServiceBookings {
+  id                  Int      @id @default(autoincrement())
+  name                String   @db.VarChar(255)
+  phone_no            String   @db.VarChar(20)
+  vehicle_type        String   @db.VarChar(100)
+  license_plate       String   @db.VarChar(20)
+  vehicle_problem     String   @db.Text
+  service_schedule_id Int
+  service_time        String   @db.VarChar(50)
+  service_status_id   Int      
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  
+  serviceSchedule ServiceSchedules @relation(fields: [service_schedule_id], references: [id])
+  serviceStatus   ServiceStatuses  @relation(fields: [service_status_id], references: [id])
+  
+  @@map("service_bookings")
+}
