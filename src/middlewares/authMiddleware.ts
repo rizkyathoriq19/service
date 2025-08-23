@@ -3,9 +3,10 @@ import jwt from 'jsonwebtoken';
 import {  Dealers } from '@prisma/client';
 import { response_unauthorized } from '$utils/response.utils';
 import { prisma } from '$utils/prisma.utils';
+import { exclude } from '$entities/User';
 
 export interface RequestWithUser extends Request {
-    user?: Dealers;
+    user?: Omit<Dealers, 'password'>;
 }
 
 export const protect = async (req: RequestWithUser, res: Response, next: NextFunction) => {
@@ -28,7 +29,7 @@ export const protect = async (req: RequestWithUser, res: Response, next: NextFun
             return response_unauthorized(res, 'Not authorized, user not found');
         }
         
-        req.user = user;
+        req.user = exclude(user, 'password') as Dealers;
         next();
     } catch (error) {
         return response_unauthorized(res, 'Not authorized, token failed');
