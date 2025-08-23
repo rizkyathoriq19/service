@@ -1,7 +1,6 @@
 import { response_not_found, response_success } from "$utils/response.utils";
 import { Request, Response, Router } from "express";
 import RoutesRegistry from "./registry";
-// import { protect } from '../middlewares/authMiddleware';
 
 const router = Router();
 
@@ -19,6 +18,8 @@ router.get("/ping", (req: Request, res: Response) => {
 });
 
 router.use("/auth", RoutesRegistry.AuthRoutes)
+router.use("/schedules", RoutesRegistry.ScheduleRoutes)
+router.use("/bookings", RoutesRegistry.BookingRoutes)
 
 router.all("*", (req: Request, res: Response) => {
     return response_not_found(res);
