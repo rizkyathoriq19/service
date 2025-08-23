@@ -2,10 +2,11 @@ import { PrismaClient } from '@prisma/client';
 
 export async function seedServiceStatuses(prisma: PrismaClient) {
     const statuses = [
-        { name: "Pending" },
-        { name: "Confirmed" },
-        { name: "Completed" },
-        { name: "Cancelled" },
+        { name: "menunggu konfirmasi" },
+        { name: "konfirmasi batal" },
+        { name: "konfirmasi datang" },
+        { name: "tidak datang" },
+        { name: "datang" },
     ];
 
     for (const status of statuses) {
