@@ -16,9 +16,19 @@ export const response_handler = (
     status: number,
     data: unknown = null,
     message = "",
-    errors: Array<string> = []
+    errors: Array<string> = [],
+    meta?: any
 ): Response => {
-    return res.status(status).json({ data, message, errors });
+    const response: any = {
+        status: status < 400,
+        data,
+        message,
+        errors
+    };
+
+    if (meta) response.meta = meta;
+
+    return res.status(status).json(response);
 };
 
 /**
@@ -136,9 +146,10 @@ export const response_internal_server_error = (
 export const response_success = (
     res: Response,
     content: unknown = null,
-    message = "Success"
+    message = "Success",
+    meta?: any
 ): Response => {
-    return response_handler(res, 200, content, message, undefined);
+    return response_handler(res, 200, content, message, undefined, meta);
 };
 
 /**

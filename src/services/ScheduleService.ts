@@ -3,6 +3,15 @@ import { ServiceResponse, INTERNAL_SERVER_ERROR_SERVICE_RESPONSE } from '$entiti
 import { CreateScheduleDTO, ScheduleRequestDTO, UpdateScheduleDTO } from '$entities/Schedule';
 import Logger from '$pkg/logger';
 
+function normalizeBigInt(obj: any) {
+    return JSON.parse(
+        JSON.stringify(
+            obj,
+            (_, v) => (typeof v === "bigint" ? Number(v) : v)
+        )
+    );
+}
+
 export async function getAvailableSchedules(params?: ScheduleRequestDTO): Promise<ServiceResponse<any>> {
     try {
         const whereClause: any = {
@@ -260,7 +269,11 @@ export async function deleteSchedule(id: number): Promise<ServiceResponse<any>> 
     }
 }
 
-export async function getAllSchedules(dealerId: number): Promise<ServiceResponse<any>> {
+export async function getAllSchedules(
+    dealerId: number,
+    page: number = 1,
+    limit: number = 10,
+): Promise<ServiceResponse<any>> {
     try {
         if (!dealerId) {
             return {
@@ -273,46 +286,49 @@ export async function getAllSchedules(dealerId: number): Promise<ServiceResponse
             };
         }
 
-        const schedules = await prisma.serviceSchedules.findMany({
-            where: {
-                dealer_id: dealerId
-            },
-            orderBy: [
-                { schedule_date: 'asc' }
-            ],
-            include: {
-                dealer: {
-                    select: {
-                        name: true,
-                        address: true
-                    }
-                },
-                serviceBookings: {
-                    select: {
-                        id: true,
-                        service_status_id: true
-                    }
-                }
-            }
-        });
+        const offset = (page - 1) * limit;
 
-        const formattedSchedules = schedules.map(schedule => ({
-            id: schedule.id,
-            schedule_date: schedule.schedule_date,
-            quota: schedule.quota,
-            used_quota: schedule.serviceBookings.length,
-            available_quota: schedule.quota - schedule.serviceBookings.length,
-            dealer_name: schedule.dealer.name,
-            dealer_address: schedule.dealer.address,
-            booking_count: schedule.serviceBookings.length,
-            created_at: schedule.created_at,
-            updated_at: schedule.updated_at
-        }));
+        const schedules = await prisma.$queryRaw<any[]>`
+            SELECT 
+                ss.id,
+                ss.schedule_date,
+                ss.quota,
+                COUNT(sb.id) AS used_quota,
+                (ss.quota - COUNT(sb.id)) AS available_quota,
+                d.name AS dealer_name,
+                d.address AS dealer_address,
+                ss.created_at,
+                ss.updated_at
+            FROM service_schedules ss
+            INNER JOIN dealers d ON d.id = ss.dealer_id
+            LEFT JOIN service_bookings sb ON sb.service_schedule_id = ss.id
+            WHERE ss.dealer_id = ${dealerId}
+            GROUP BY ss.id, d.name, d.address
+            ORDER BY ss.schedule_date ASC
+            LIMIT ${limit} OFFSET ${offset};
+        `;
+
+        const totalDataResult = await prisma.$queryRaw<any[]>`
+            SELECT COUNT(DISTINCT ss.id) AS total
+            FROM service_schedules ss
+            LEFT JOIN service_bookings sb ON sb.service_schedule_id = ss.id
+            WHERE ss.dealer_id = ${dealerId};
+        `;
+
+        const totalData = Number(totalDataResult[0]?.total || 0);
+        const totalPages = Math.ceil(totalData / limit);
+        const normalizedSchedules = normalizeBigInt(schedules);
 
         return {
             status: true,
             message: 'Jadwal dealer berhasil diambil',
-            data: formattedSchedules
+            data: normalizedSchedules,
+            meta: {
+                page,
+                perPage: limit,
+                totalPages,
+                totalRows: totalData,
+            }
         };
 
     } catch (err) {

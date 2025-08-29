@@ -38,13 +38,14 @@ export const createBooking = async (req: Request, res: Response) => {
 }
 
 export const getAllBookings = async (req: Request, res: Response) => {
-        const result = await BookingService.getBookings();
+        const { page, limit, license_plate } = req.query as { page: string; limit: string, license_plate?: string };
+        const result = await BookingService.getBookings(Number(page) || 1, Number(limit) || 10, license_plate);
         
         if (!result.status) {
             return response_bad_request(res, result.err?.message || 'Gagal mengambil bookings');
         }
 
-        return response_success(res, result.data, result.message);
+        return response_success(res, result.data, result.message, result.meta);
 };
 
 export const getBookingById = async (req: Request, res: Response) => {

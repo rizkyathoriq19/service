@@ -3,6 +3,15 @@ import { ServiceResponse, INTERNAL_SERVER_ERROR_SERVICE_RESPONSE } from '$entiti
 import { BookingRequestDTO, UpdateBookingStatusDTO } from '$entities/Booking';
 import Logger from '$pkg/logger';
 
+function normalizeBigInt(obj: any) {
+    return JSON.parse(
+        JSON.stringify(
+            obj,
+            (_, v) => (typeof v === "bigint" ? Number(v) : v)
+        )
+    );
+}
+
 export async function createBooking(params: BookingRequestDTO): Promise<ServiceResponse<any>> {
     try {
         const today = new Date();
@@ -137,47 +146,60 @@ export async function createBooking(params: BookingRequestDTO): Promise<ServiceR
     }
 }
 
-export async function getBookings(): Promise<ServiceResponse<any>> {
+export async function getBookings(
+    page: number = 1,
+    limit: number = 10,
+    licensePlate?: string
+): Promise<ServiceResponse<any>> {
     try {
-        const bookings = await prisma.serviceBookings.findMany({
-            include: {
-                serviceSchedule: {
-                    select: {
-                        schedule_date: true,
-                        quota: true
-                    }
-                },
-                serviceStatus: {
-                    select: {
-                        name: true
-                    }
-                }
-            },
-            orderBy: {
-                created_at: 'desc'
-            }
-        });
+        const offset = (page - 1) * limit;
+        const licensePlateFilter = licensePlate ? `%${licensePlate.toLowerCase()}%` : null;
 
-        const formattedBookings = bookings.map(booking => ({
-            id: booking.id,
-            name: booking.name,
-            phone_no: booking.phone_no,
-            vehicle_type: booking.vehicle_type,
-            license_plate: booking.license_plate,
-            vehicle_problem: booking.vehicle_problem,
-            service_schedule_id: booking.service_schedule_id,
-            service_time: booking.service_time,
-            status: booking.serviceStatus.name,
-            schedule_date: booking.serviceSchedule.schedule_date,
-            created_at: booking.created_at,
-            updated_at: booking.updated_at
-        }));
+        const bookings = await prisma.$queryRaw<any[]>`
+            SELECT 
+                sb.id,
+                sb.name,
+                sb.phone_no,
+                sb.vehicle_type,
+                sb.license_plate,
+                sb.vehicle_problem,
+                sb.service_schedule_id,
+                sb.service_time,
+                ss.name AS status,
+                sch.schedule_date,
+                sch.quota,
+                sb.created_at,
+                sb.updated_at
+            FROM service_bookings sb
+            INNER JOIN service_schedules sch ON sch.id = sb.service_schedule_id
+            INNER JOIN service_statuses ss ON ss.id = sb.service_status_id
+            WHERE (${licensePlateFilter} IS NULL OR LOWER(sb.license_plate) LIKE ${licensePlateFilter})
+            ORDER BY sb.created_at DESC
+            LIMIT ${limit} OFFSET ${offset};
+        `;
+
+        const totalDataResult = await prisma.$queryRaw<any[]>`
+            SELECT COUNT(DISTINCT sb.id) AS total
+            FROM service_bookings sb
+            WHERE (${licensePlateFilter} IS NULL OR LOWER(sb.license_plate) LIKE ${licensePlateFilter})
+        `;
+
+        const totalData = Number(totalDataResult[0]?.total || 0);
+        const totalPages = Math.ceil(totalData / limit);
+        const normalizedBookings = normalizeBigInt(bookings);
 
         return {
             status: true,
             message: 'Data booking berhasil diambil',
-            data: formattedBookings
+            data: normalizedBookings,
+            meta: {
+                page,
+                perPage: limit,
+                totalPages,
+                totalRows: totalData,
+            }
         };
+
     } catch (err) {
         Logger.error(`BookingService.getAllBookings: ${err}`);
         return INTERNAL_SERVER_ERROR_SERVICE_RESPONSE;

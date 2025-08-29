@@ -94,14 +94,15 @@ export const deleteSchedule = async (req: Request, res: Response) => {
 
 export const getAllSchedules = async (req: RequestWithUser, res: Response) => {
     const dealerId = req.user?.id;
+    const { page, limit } = req.query as { page: string; limit: string };
     if (!dealerId) return response_unauthorized(res, 'Dealer tidak terautentikasi');
 
-    const result = await ScheduleService.getAllSchedules(dealerId);
+    const result = await ScheduleService.getAllSchedules(dealerId, Number(page) || 1, Number(limit) || 10);
     if (!result.status) {
         return response_bad_request(res, result.err?.message);
     }
 
-    return response_success(res, result.data, result.message);
+    return response_success(res, result.data, result.message, result.meta);
 };
 
 export const getScheduleById = async (req: RequestWithUser, res: Response) => {
